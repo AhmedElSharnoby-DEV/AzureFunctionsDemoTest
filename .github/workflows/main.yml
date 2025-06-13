@@ -1,59 +1,48 @@
-
 name: Deploy DotNet project to Azure Function App
 
 on: [push]
 
-# CONFIGURATION
-# For help, go to https://github.com/Azure/Actions
-#
-# 1. Set up the following secrets in your repository:
-#   AZURE_FUNCTIONAPP_PUBLISH_PROFILE
-#
-# 2. Change these variables for your configuration:
 env:
-  AZURE_FUNCTIONAPP_NAME: 'azdd12345' # set this to your function app name on Azure
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your function app project, defaults to the repository root
-  DOTNET_VERSION: '8.0.x' # set this to the dotnet version to use (e.g. '2.1.x', '3.1.x', '5.0.x')
+  AZURE_FUNCTIONAPP_NAME: 'azdd12345' # Set your Function App name
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # Path to your Function App project
+  DOTNET_VERSION: '8.0.x' # .NET version
 
 jobs:
   build-and-deploy:
     runs-on: windows-latest
     environment: dev
+
     steps:
-      - name: 'Checkout GitHub Action'
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: 'Resolve Project Dependencies Using Dotnet'
+      - name: Build Project
         shell: pwsh
         run: |
           pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
           dotnet build --configuration Release --output ./output
           popd
 
-      - name: 'Run Azure Functions Action'
+      - name: Deploy to Azure Function App
         uses: Azure/functions-action@v1
-        id: fa
+        id: deploy
         with:
           app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
           package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
 
-      - name: Update Function App Settings
+      - name: Azure Login (for setting app settings)
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Update Azure Function App Settings
         uses: Azure/appservice-settings@v1
         with:
           app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-          app-settings-json: |
-            [
-              {
-                "name": "CosmosDBConnection",
-                "value": "${{ secrets.COSMOSDB_CONNECTION_STRING }}",
-                "slotSetting": false
-              }
-            ]
-
-# For more samples to get started with GitHub Action workflows to deploy to Azure, refer to https://github.com/Azure/actions-workflow-samples
+          app-settings-json: '[{"name": "CosmosDBConnection", "value": "${{ secrets.COSMOSDB_CONNECTION_STRING }}", "slotSetting": false}]'
