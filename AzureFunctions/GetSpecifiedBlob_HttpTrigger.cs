@@ -26,6 +26,7 @@ public class GetSpecifiedBlob_HttpTrigger
         var response = req.CreateResponse(System.Net.HttpStatusCode.OK);
         var blobData = JsonSerializer.Deserialize<OrderCreatedDto>(blobResult.Value.Content);
         await response.WriteAsJsonAsync(blobData);
+        // return response of azure function
         return response;
     }
 }
